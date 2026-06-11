@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng ký — AgentSkills</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+      <a href="index.html" class="flex items-center gap-2 shrink-0">
+        <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center text-white font-black text-lg">A</span>
+        <span class="font-extrabold text-lg tracking-tight">Agent<span class="text-indigo-600">Skills</span></span>
+      </a>
+      <nav class="flex items-center gap-2 ml-auto">
+        <div id="langToggle" class="flex items-center rounded-lg border border-slate-200 overflow-hidden text-xs font-bold select-none">
+          <button data-lang="vi" class="px-2.5 py-1.5 transition-colors">VI</button>
+          <button data-lang="en" class="px-2.5 py-1.5 transition-colors">EN</button>
+        </div>
+        <div id="navAuth" class="flex items-center gap-1 ml-1"></div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto px-4 py-12">
+    <div class="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm shadow-slate-200/50">
+      <h1 data-i18n="reg.title" class="text-2xl font-extrabold tracking-tight">Tạo tài khoản</h1>
+      <p data-i18n="reg.sub" class="text-slate-500 text-sm mt-1">Tham gia cộng đồng AgentSkills.</p>
+
+      <div id="err" class="hidden mt-4 px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm"></div>
+
+      <div class="mt-6 space-y-4">
+        <div>
+          <label data-i18n="reg.displayName" class="block text-xs font-medium text-slate-500 mb-1.5">Tên hiển thị</label>
+          <input id="dn" type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+        </div>
+        <div>
+          <label data-i18n="reg.username" class="block text-xs font-medium text-slate-500 mb-1.5">Tên đăng nhập</label>
+          <input id="u" type="text" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+        </div>
+        <div>
+          <label data-i18n="reg.password" class="block text-xs font-medium text-slate-500 mb-1.5">Mật khẩu</label>
+          <input id="p" type="password" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+        </div>
+        <p data-i18n="reg.roleNote" class="text-xs text-slate-400">Tài khoản mới mặc định có quyền User.</p>
+        <button id="regBtn" data-i18n="reg.submit" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm shadow-indigo-200 transition-colors">Đăng ký</button>
+      </div>
+
+      <p class="text-center text-sm text-slate-500 mt-4">
+        <span data-i18n="reg.hasAcc">Đã có tài khoản?</span>
+        <a href="login.html" data-i18n="reg.toLogin" class="text-indigo-600 font-semibold hover:underline">Đăng nhập</a>
+      </p>
+    </div>
+  </main>
+
+  <footer id="siteFooter" class="border-t border-slate-200 bg-white mt-12"></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>
+    const errBox = document.getElementById("err");
+    function showErr(m) { errBox.textContent = m || "Error"; errBox.classList.remove("hidden"); }
+    const val = (id) => document.getElementById(id).value.trim();
+
+    async function doRegister() {
+      errBox.classList.add("hidden");
+      const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: val("dn"), username: val("u"), password: document.getElementById("p").value }) });
+      const d = await r.json();
+      if (r.ok) location.href = "profile.html?u=" + d.user.username; else showErr(d.error);
+    }
+    document.getElementById("regBtn").addEventListener("click", doRegister);
+    document.getElementById("p").addEventListener("keydown", (e) => { if (e.key === "Enter") doRegister(); });
+  </script>
+</body>
+</html>

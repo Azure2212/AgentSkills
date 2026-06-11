@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentSkills — Chia sẻ Skills & Hướng dẫn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+
+  <!-- ============ NAVBAR ============ -->
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+      <a href="index.html" class="flex items-center gap-2 shrink-0">
+        <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center text-white font-black text-lg">A</span>
+        <span class="font-extrabold text-lg tracking-tight">Agent<span class="text-indigo-600">Skills</span></span>
+      </a>
+
+      <div class="hidden md:flex flex-1 max-w-xl mx-auto relative">
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input data-search data-i18n-ph="search.nav" type="text" class="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-100 border border-transparent focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all" />
+      </div>
+
+      <nav class="flex items-center gap-1 sm:gap-2 ml-auto">
+        <a href="index.html" data-i18n="nav.explore" class="hidden sm:block px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors">Khám phá</a>
+
+        <!-- language toggle -->
+        <div id="langToggle" class="flex items-center rounded-lg border border-slate-200 overflow-hidden text-xs font-bold select-none">
+          <button data-lang="vi" class="px-2.5 py-1.5 transition-colors">VI</button>
+          <button data-lang="en" class="px-2.5 py-1.5 transition-colors">EN</button>
+        </div>
+
+        <a href="upload.html" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm shadow-indigo-200 transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span data-i18n="nav.contribute">Đóng góp</span>
+        </a>
+        <div id="navAuth" class="flex items-center gap-1 ml-1"></div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero-grid border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-14 text-center">
+      <span data-i18n="hero.badge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold mb-5">✨ Cộng đồng chia sẻ kiến thức mở</span>
+      <h1 data-i18n-html="hero.title" class="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 max-w-3xl mx-auto leading-[1.1]"></h1>
+      <p data-i18n="hero.subtitle" class="text-slate-500 mt-4 max-w-xl mx-auto text-lg"></p>
+
+      <div class="mt-7 max-w-xl mx-auto relative">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input data-search data-i18n-ph="search.hero" type="text" class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 outline-none text-base transition-all" />
+      </div>
+
+      <div class="flex items-center justify-center gap-8 mt-8 text-center">
+        <div><div id="statGuides" class="text-2xl font-extrabold text-slate-900">–</div><div data-i18n="stats.guides" class="text-xs text-slate-400">Hướng dẫn</div></div>
+        <div class="w-px h-8 bg-slate-200"></div>
+        <div><div id="statCollections" class="text-2xl font-extrabold text-slate-900">–</div><div data-i18n="stats.collections" class="text-xs text-slate-400">Collections</div></div>
+        <div class="w-px h-8 bg-slate-200"></div>
+        <div><div id="statAuthors" class="text-2xl font-extrabold text-slate-900">–</div><div data-i18n="stats.authors" class="text-xs text-slate-400">Tác giả</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FILTER + GRID ============ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-5">
+      <div class="inline-flex bg-slate-100 rounded-xl p-1">
+        <button data-type="all" data-i18n="tab.all" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-indigo-600 shadow-sm transition-all">Tất cả</button>
+        <button data-type="skill" data-i18n="tab.skills" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 transition-all">Skills</button>
+        <button data-type="collection" data-i18n="tab.collections" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 transition-all">Collections</button>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="text-sm text-slate-400"><b id="resultCount" class="text-slate-700">0</b> <span data-i18n="results">kết quả</span></span>
+        <select id="langFilter" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:border-indigo-300 cursor-pointer">
+          <option value="all" data-i18n="lang.all">Mọi ngôn ngữ</option>
+          <option value="vi">🇻🇳 VI</option>
+          <option value="en">🇬🇧 EN</option>
+        </select>
+        <select id="sortSelect" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:border-indigo-300 cursor-pointer">
+          <option value="popular" data-i18n="sort.popular">Phổ biến nhất</option>
+          <option value="downloads" data-i18n="sort.downloads">Tải nhiều nhất</option>
+          <option value="recent" data-i18n="sort.recent">Mới cập nhật</option>
+        </select>
+        <button id="dlCatBtn" class="flex items-center gap-1.5 text-sm font-semibold border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-indigo-300 hover:text-indigo-600 transition-colors hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="dl.category">Tải danh mục</span>
+        </button>
+        <button id="dlAllBtn" class="flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="dl.all">Tải tất cả</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="categoryBar" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 mb-6"></div>
+
+    <div id="skillGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer id="siteFooter" class="border-t border-slate-200 bg-white mt-12"></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/auth.js"></script>
+</body>
+</html>

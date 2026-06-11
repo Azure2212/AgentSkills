@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản trị — AgentSkills</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased" data-require-role="sub-admin">
+
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+      <a href="index.html" class="flex items-center gap-2 shrink-0">
+        <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center text-white font-black text-lg">A</span>
+        <span class="font-extrabold text-lg tracking-tight">Agent<span class="text-indigo-600">Skills</span></span>
+      </a>
+      <nav class="flex items-center gap-2 ml-auto">
+        <a href="index.html" data-i18n="nav.explore" class="hidden sm:block px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors">Khám phá</a>
+        <div id="langToggle" class="flex items-center rounded-lg border border-slate-200 overflow-hidden text-xs font-bold select-none">
+          <button data-lang="vi" class="px-2.5 py-1.5 transition-colors">VI</button>
+          <button data-lang="en" class="px-2.5 py-1.5 transition-colors">EN</button>
+        </div>
+        <div id="navAuth" class="flex items-center gap-1 ml-1"></div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="adminRoot" class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div class="text-center py-20 text-slate-300">…</div>
+  </main>
+
+  <footer id="siteFooter" class="border-t border-slate-200 bg-white mt-12"></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>
+    const root = document.getElementById("adminRoot");
+    const STATE = { tab: "users", users: [], cats: [], report: null, loaded: false };
+    const RPT = { visMode: "month", visFrom: null, visTo: null, regFrom: null, regTo: null };
+    let visChart = null, regChart = null;
+    const HEX = ["#6366f1", "#8b5cf6", "#0ea5e9", "#10b981", "#f59e0b", "#f43f5e", "#14b8a6", "#ec4899", "#84cc16", "#f97316"];
+    const escAttr = (s) => String(s == null ? "" : s).replace(/"/g, "&quot;");
+
+    function canEditRole(target) {
+      const me = window.CURRENT_USER;
+      if (!me) return false;
+      if (target.username === "azure" || me.username === target.username) return false;
+      if (me.role === "admin") return true;
+      if (me.role === "sub-admin") return target.role === "user";
+      return false;
+    }
+    function allowedRoles() {
+      const me = window.CURRENT_USER;
+      if (me.role === "admin") return ["user", "sub-admin", "admin"];
+      if (me.role === "sub-admin") return ["user", "sub-admin"];
+      return [];
+    }
+    async function changeUserRole(username) {
+      const role = document.getElementById("rs-" + username).value;
+      const r = await fetch("/api/users/" + encodeURIComponent(username) + "/role", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+      const d = await r.json();
+      if (r.ok) loadAdmin(true); else alert(d.error);
+    }
+    async function toggleBan(username, status) {
+      const r = await fetch("/api/users/" + encodeURIComponent(username) + "/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      const d = await r.json();
+      if (r.ok) loadAdmin(true); else alert(d.error);
+    }
+    async function addCat() {
+      const vi = document.getElementById("catViNew").value.trim();
+      const en = document.getElementById("catEnNew").value.trim();
+      const r = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vi, en }) });
+      const d = await r.json();
+      if (r.ok) { _catsLoaded = false; loadAdmin(true); } else alert(d.error);
+    }
+    async function saveCat(id) {
+      const vi = document.getElementById("cv-" + id).value.trim();
+      const en = document.getElementById("ce-" + id).value.trim();
+      const r = await fetch("/api/categories/" + encodeURIComponent(id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vi, en }) });
+      const d = await r.json();
+      if (r.ok) { _catsLoaded = false; loadAdmin(true); } else alert(d.error);
+    }
+    async function delCat(id) {
+      if (!confirm(t("a.catDeleteConfirm"))) return;
+      const r = await fetch("/api/categories/" + encodeURIComponent(id), { method: "DELETE" });
+      const d = await r.json();
+      if (r.ok) { _catsLoaded = false; loadAdmin(true); } else alert(d.error);
+    }
+
+    function userRow(u) {
+      const me = window.CURRENT_USER;
+      const isYou = me && me.username === u.username;
+      const editable = canEditRole(u);
+      const roleCell = `
+        <div class="flex flex-col gap-1.5">
+          ${roleBadge(u.role)}
+          ${editable ? `<div class="flex items-center gap-1">
+            <select id="rs-${u.username}" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-indigo-300">
+              ${allowedRoles().map((r) => `<option value="${r}" ${r === u.role ? "selected" : ""}>${t("role." + r)}</option>`).join("")}
+            </select>
+            <button onclick="changeUserRole('${u.username}')" class="px-2 py-1 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700">${t("p.save")}</button>
+          </div>` : ""}
+        </div>`;
+      const statusBadge = `<span class="inline-flex w-fit px-2 py-0.5 rounded-md text-xs font-semibold ${u.status === "banned" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}">${t("status." + (u.status || "active"))}</span>`;
+      const statusCell = `
+        <div class="flex flex-col gap-1.5">
+          ${statusBadge}
+          ${editable ? `<button onclick="toggleBan('${u.username}','${u.status === "banned" ? "active" : "banned"}')" class="w-fit px-2 py-1 rounded-lg text-xs font-semibold text-white ${u.status === "banned" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"}">${u.status === "banned" ? t("a.unban") : t("a.ban")}</button>` : ""}
+        </div>`;
+      return `
+      <tr class="border-t border-slate-100 align-top">
+        <td class="py-3 pr-3">
+          <a href="profile.html?u=${u.username}" class="flex items-center gap-3 hover:opacity-80">
+            <span class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-xs font-bold grid place-items-center shrink-0">${u.avatar}</span>
+            <span class="min-w-0"><span class="block text-sm font-semibold text-slate-800 truncate">${u.displayName} ${isYou ? `<span class="text-xs text-slate-400 font-normal">${t("a.you")}</span>` : ""}</span><span class="block text-xs text-slate-400">${u.handle}</span></span>
+          </a>
+        </td>
+        <td class="py-3 pr-3">${roleCell}</td>
+        <td class="py-3 pr-3">${statusCell}</td>
+        <td class="py-3 pr-3 text-xs text-slate-500 whitespace-nowrap">${u.createdAt || "----"}</td>
+        <td class="py-3 pr-3 text-xs text-slate-500 whitespace-nowrap">${u.lastLogin || "----"}</td>
+        <td class="py-3 pr-3 text-xs text-slate-500 whitespace-nowrap">${u.lastContribution || "----"}</td>
+      </tr>`;
+    }
+
+    function catRow(c, editable) {
+      if (!editable) {
+        return `
+        <div class="flex items-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl">
+          <span class="text-xs text-slate-400 font-mono w-20 shrink-0 truncate" title="${escAttr(c.id)}">${c.id}</span>
+          <span class="flex-1 text-sm text-slate-700">${c.vi}</span>
+          <span class="flex-1 text-sm text-slate-500">${c.en}</span>
+        </div>`;
+      }
+      return `
+      <div class="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl">
+        <span class="text-xs text-slate-400 font-mono w-20 shrink-0 truncate" title="${escAttr(c.id)}">${c.id}</span>
+        <input id="cv-${c.id}" value="${escAttr(c.vi)}" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300" />
+        <input id="ce-${c.id}" value="${escAttr(c.en)}" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300" />
+        <button onclick="saveCat('${c.id}')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 shrink-0">${t("p.save")}</button>
+        <button onclick="delCat('${c.id}')" class="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50 shrink-0">🗑</button>
+      </div>`;
+    }
+
+    /* ---- report rendering ---- */
+    function repStat(num, label, color) {
+      return `<div class="bg-white border border-slate-200 rounded-2xl p-4"><div class="text-2xl font-extrabold ${color || "text-slate-900"}">${num}</div><div class="text-xs text-slate-400 mt-0.5">${label}</div></div>`;
+    }
+    function reportPanel() {
+      const R = STATE.report;
+      if (!R) return `<p class="text-sm text-slate-400">…</p>`;
+      const totalCat = R.categories.reduce((a, c) => a + c.count, 0) || 1;
+      const sortedCat = [...R.categories].sort((a, b) => b.count - a.count);
+      const catRows = sortedCat.length ? sortedCat.map((c, i) => {
+        const pct = Math.round(c.count / totalCat * 100);
+        const tag = i === 0 ? `<span class="text-emerald-600 text-xs font-semibold">▲ ${t("a.repMost")}</span>`
+          : (i === sortedCat.length - 1 ? `<span class="text-rose-500 text-xs font-semibold">▼ ${t("a.repLeast")}</span>` : "");
+        return `<div>
+          <div class="flex justify-between items-center text-xs mb-1"><span class="text-slate-600 font-medium">${catLabel(c.id)} ${tag}</span><span class="text-slate-400">${c.count} · ${pct}%</span></div>
+          <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:${HEX[i % HEX.length]}"></div></div>
+        </div>`;
+      }).join("") : `<p class="text-sm text-slate-400">—</p>`;
+
+      const topRows = R.topContributors.length ? R.topContributors.map((u, i) => `
+        <a href="profile.html?u=${u.username}" class="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 transition-colors">
+          <span class="text-sm font-bold text-slate-400 w-5 text-center shrink-0">${i + 1}</span>
+          <span class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-xs font-bold grid place-items-center shrink-0">${u.avatar}</span>
+          <span class="flex-1 min-w-0 text-sm font-semibold text-slate-800 truncate">${u.displayName}</span>
+          <span class="text-xs text-slate-500 shrink-0">${u.count} ${t("a.repUnit")} · ⭐ ${fmtNum(u.stars)}</span>
+        </a>`).join("") : `<p class="text-sm text-slate-400">—</p>`;
+
+      return `
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        ${repStat(fmtNum(R.visits.total), t("a.repVisitsTotal"), "text-indigo-600")}
+        ${repStat(fmtNum(R.visits.today), t("a.repVisitsToday"), "text-indigo-600")}
+        ${repStat(R.totals.users, t("a.repUsers"))}
+        ${repStat(R.totals.contributions, t("a.repContrib"))}
+        ${repStat(R.totals.skills, t("a.repSkills"))}
+        ${repStat(R.totals.collections, t("a.repCollections"))}
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <h2 class="font-bold text-slate-800 text-sm">${t("a.repVisitsOverTime")}</h2>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <select id="visMode" class="text-xs border border-slate-200 rounded-lg pl-2 pr-6 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer">
+                <option value="month">${t("p.byMonth")}</option>
+                <option value="year">${t("p.byYear")}</option>
+              </select>
+              <div id="visMonthCtrl" class="flex items-center gap-1">
+                <select id="visFrom" class="text-xs border border-slate-200 rounded-lg pl-2 pr-5 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer"></select>
+                <span class="text-slate-300 text-xs">→</span>
+                <select id="visTo" class="text-xs border border-slate-200 rounded-lg pl-2 pr-5 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer"></select>
+              </div>
+            </div>
+          </div>
+          <div class="h-56"><canvas id="visCanvas"></canvas></div>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <h2 class="font-bold text-slate-800 text-sm">${t("a.repNewUsers")}</h2>
+            <div class="flex items-center gap-1.5 flex-wrap text-xs">
+              <span class="text-slate-400">${t("a.from")}</span>
+              <input type="date" id="regFrom" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-indigo-300" />
+              <span class="text-slate-400">${t("a.to")}</span>
+              <input type="date" id="regTo" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white outline-none focus:border-indigo-300" />
+            </div>
+          </div>
+          <div class="h-56"><canvas id="regCanvas"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h2 class="font-bold text-slate-800 text-sm mb-4">${t("a.repCatBreakdown")}</h2>
+          <div class="space-y-3">${catRows}</div>
+        </div>
+        <div>
+          <h2 class="font-bold text-slate-800 text-sm mb-4">${t("a.repTopContributors")}</h2>
+          <div class="space-y-2">${topRows}</div>
+        </div>
+      </div>`;
+    }
+
+    function mountReportCharts() {
+      const R = STATE.report;
+      if (!R || typeof Chart === "undefined") return;
+
+      // visits chart
+      const days = Object.keys(R.visits.daily).sort();
+      const months = days.map((d) => d.slice(0, 7));
+      const monthOpts = months.length ? monthRange(months[0], months[months.length - 1]) : [];
+      const visMode = document.getElementById("visMode"), visFrom = document.getElementById("visFrom"), visTo = document.getElementById("visTo");
+      if (visFrom) visFrom.innerHTML = monthOpts.map((m) => `<option value="${m}" ${m === RPT.visFrom ? "selected" : ""}>${monthLabel(m)}</option>`).join("");
+      if (visTo) visTo.innerHTML = monthOpts.map((m) => `<option value="${m}" ${m === RPT.visTo ? "selected" : ""}>${monthLabel(m)}</option>`).join("");
+      if (visMode) { visMode.value = RPT.visMode; visMode.onchange = () => { RPT.visMode = visMode.value; document.getElementById("visMonthCtrl").style.display = RPT.visMode === "month" ? "flex" : "none"; buildVisChart(); }; }
+      if (visFrom) visFrom.onchange = () => { RPT.visFrom = visFrom.value; buildVisChart(); };
+      if (visTo) visTo.onchange = () => { RPT.visTo = visTo.value; buildVisChart(); };
+      const vmc = document.getElementById("visMonthCtrl"); if (vmc) vmc.style.display = RPT.visMode === "month" ? "flex" : "none";
+      buildVisChart();
+
+      // registrations chart
+      const rf = document.getElementById("regFrom"), rt = document.getElementById("regTo");
+      if (rf) { rf.value = RPT.regFrom || ""; rf.onchange = () => { RPT.regFrom = rf.value; buildRegChart(); }; }
+      if (rt) { rt.value = RPT.regTo || ""; rt.onchange = () => { RPT.regTo = rt.value; buildRegChart(); }; }
+      buildRegChart();
+    }
+
+    function buildVisChart() {
+      const R = STATE.report; const canvas = document.getElementById("visCanvas");
+      if (visChart) { visChart.destroy(); visChart = null; }
+      if (!canvas || typeof Chart === "undefined") return;
+      const daily = R.visits.daily;
+      let labels = [], counts = [];
+      if (RPT.visMode === "year") {
+        const years = {};
+        Object.entries(daily).forEach(([d, n]) => { const y = d.slice(0, 4); years[y] = (years[y] || 0) + n; });
+        labels = Object.keys(years).sort(); counts = labels.map((y) => years[y]);
+      } else {
+        const months = Object.keys(daily).map((d) => d.slice(0, 7)).sort();
+        const from = RPT.visFrom || months[0], to = RPT.visTo || months[months.length - 1];
+        if (from && to) {
+          const rng = monthRange(from, to);
+          labels = rng.map(monthLabel);
+          counts = rng.map((m) => Object.entries(daily).filter(([d]) => d.slice(0, 7) === m).reduce((a, [, n]) => a + n, 0));
+        }
+      }
+      visChart = new Chart(canvas, { type: "bar", data: { labels, datasets: [{ data: counts, backgroundColor: "#6366f1", borderRadius: 6, maxBarThickness: 40 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
+    }
+
+    function buildRegChart() {
+      const R = STATE.report; const canvas = document.getElementById("regCanvas");
+      if (regChart) { regChart.destroy(); regChart = null; }
+      if (!canvas || typeof Chart === "undefined") return;
+      const dates = R.registrations.map((r) => r.date).filter(Boolean).sort();
+      const from = RPT.regFrom || dates[0], to = RPT.regTo || dates[dates.length - 1];
+      let labels = [], counts = [];
+      if (from && to) {
+        const rng = dayRange(from, to);
+        labels = rng.map((d) => d.slice(5)); // MM-DD
+        counts = rng.map((d) => dates.filter((x) => x === d).length);
+      }
+      regChart = new Chart(canvas, { type: "bar", data: { labels, datasets: [{ data: counts, backgroundColor: "#10b981", borderRadius: 6, maxBarThickness: 36 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
+    }
+
+    function render() {
+      if (!STATE.loaded) return;
+      const me = window.CURRENT_USER;
+      const isAdmin = me && me.role === "admin";
+      const rank = RANK_FE[me.role] || 0;
+      const canCats = rank >= 2, canReport = rank >= 2;
+      if ((STATE.tab === "categories" && !canCats) || (STATE.tab === "report" && !canReport)) STATE.tab = "users";
+      const tabBtn = (id, label) => `<button onclick="STATE.tab='${id}';render()" class="px-4 py-1.5 rounded-lg text-sm font-semibold ${STATE.tab === id ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"} transition-all">${label}</button>`;
+
+      let panel = "";
+      if (STATE.tab === "users") {
+        panel = `
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+          <table class="w-full min-w-[780px]">
+            <thead><tr class="text-left text-xs text-slate-400 uppercase tracking-wide">
+              <th class="py-3 px-4">${t("a.user")}</th><th class="py-3 pr-3">${t("a.role")}</th><th class="py-3 pr-3">${t("a.status")}</th><th class="py-3 pr-3">${t("a.joined")}</th><th class="py-3 pr-3">${t("a.lastLogin")}</th><th class="py-3 pr-3">${t("a.lastContribution")}</th>
+            </tr></thead>
+            <tbody>${STATE.users.map(userRow).join("")}</tbody>
+          </table>
+        </div>`;
+      } else if (STATE.tab === "categories") {
+        panel = `
+        <div class="space-y-3">${STATE.cats.map((c) => catRow(c, isAdmin)).join("")}</div>
+        <div class="flex items-center gap-2 mt-4 px-4 py-3 bg-indigo-50/40 border border-indigo-100 rounded-xl">
+          <span class="w-20 shrink-0 text-xs text-slate-400">${t("a.addCat")}</span>
+          <input id="catViNew" placeholder="${t("a.catVi")}" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300" />
+          <input id="catEnNew" placeholder="${t("a.catEn")}" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300" />
+          <button onclick="addCat()" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shrink-0">+</button>
+        </div>`;
+      } else {
+        panel = reportPanel();
+      }
+
+      root.innerHTML = `
+        <div class="mb-6">
+          <h1 class="text-3xl font-extrabold tracking-tight">${t("a.title")}</h1>
+          <p class="text-slate-500 mt-1">${t("a.sub")}</p>
+        </div>
+        <div class="inline-flex bg-slate-100 rounded-xl p-1 mb-5">
+          ${tabBtn("users", t("a.tabUsers"))}
+          ${canCats ? tabBtn("categories", t("a.tabCategories")) : ""}
+          ${canReport ? tabBtn("report", t("a.tabReport")) : ""}
+        </div>
+        ${panel}`;
+
+      if (STATE.tab === "report") mountReportCharts();
+    }
+
+    async function loadAdmin(force) {
+      const me = window.CURRENT_USER;
+      if (!me) return; // guard redirects
+      if ((RANK_FE[me.role] || 0) < 2) {
+        root.innerHTML = `<div class="text-center py-20 text-slate-400"><p class="text-lg">${t("a.noPerm")}</p><a href="index.html" class="text-indigo-600 text-sm mt-2 inline-block">← ${t("d.home")}</a></div>`;
+        return;
+      }
+      if (STATE.loaded && !force) return render();
+      const users = (await (await fetch("/api/users")).json()).users || [];
+      const cats = (await (await fetch("/api/categories")).json()).categories || [];
+      const report = await (await fetch("/api/report")).json();
+      STATE.users = users; STATE.cats = cats; STATE.report = report; STATE.loaded = true;
+      const months = Object.keys(report.visits.daily || {}).map((d) => d.slice(0, 7)).sort();
+      RPT.visFrom = RPT.visFrom || months[0] || null;
+      RPT.visTo = RPT.visTo || months[months.length - 1] || null;
+      const regDates = (report.registrations || []).map((r) => r.date).filter(Boolean).sort();
+      RPT.regFrom = RPT.regFrom || regDates[0] || null;
+      RPT.regTo = RPT.regTo || regDates[regDates.length - 1] || null;
+      render();
+    }
+
+    document.addEventListener("auth:changed", () => loadAdmin(false));
+    document.addEventListener("i18n:changed", () => { if (STATE.loaded) render(); });
+  </script>
+</body>
+</html>

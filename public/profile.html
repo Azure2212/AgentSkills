@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trang cá nhân — AgentSkills</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+      <a href="index.html" class="flex items-center gap-2 shrink-0">
+        <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center text-white font-black text-lg">A</span>
+        <span class="font-extrabold text-lg tracking-tight">Agent<span class="text-indigo-600">Skills</span></span>
+      </a>
+      <nav class="flex items-center gap-2 ml-auto">
+        <a href="index.html" data-i18n="nav.explore" class="hidden sm:block px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors">Khám phá</a>
+        <div id="langToggle" class="flex items-center rounded-lg border border-slate-200 overflow-hidden text-xs font-bold select-none">
+          <button data-lang="vi" class="px-2.5 py-1.5 transition-colors">VI</button>
+          <button data-lang="en" class="px-2.5 py-1.5 transition-colors">EN</button>
+        </div>
+        <div id="navAuth" class="flex items-center gap-1 ml-1"></div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="profileRoot" class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div class="text-center py-20 text-slate-300">…</div>
+  </main>
+
+  <footer id="siteFooter" class="border-t border-slate-200 bg-white mt-12"></footer>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>
+    const root = document.getElementById("profileRoot");
+    let DATA = null;
+    let EDIT_LINKS = [];
+    const escAttr = (s) => String(s == null ? "" : s).replace(/"/g, "&quot;");
+
+    const CHART = { timeMode: "month", from: null, to: null };
+    let pieChart = null, timeChart = null;
+    const HEX = ["#6366f1", "#8b5cf6", "#0ea5e9", "#10b981", "#f59e0b", "#f43f5e", "#14b8a6", "#ec4899", "#84cc16", "#f97316"];
+
+    function notFound() {
+      root.innerHTML = `<div class="text-center py-20 text-slate-400"><p class="text-lg">${t("p.notFound")}</p><a href="index.html" class="text-indigo-600 text-sm mt-2 inline-block">← ${t("d.home")}</a></div>`;
+    }
+
+    function canEditRole(target) {
+      const me = window.CURRENT_USER;
+      if (!me) return false;
+      if (target.username === "azure" || me.username === target.username) return false;
+      if (me.role === "admin") return true;
+      if (me.role === "sub-admin") return target.role === "user";
+      return false;
+    }
+    function allowedRoles() {
+      const me = window.CURRENT_USER;
+      if (me.role === "admin") return ["user", "sub-admin", "admin"];
+      if (me.role === "sub-admin") return ["user", "sub-admin"];
+      return [];
+    }
+    async function changeRole(username) {
+      const role = document.getElementById("roleSel").value;
+      const r = await fetch("/api/users/" + encodeURIComponent(username) + "/role", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+      const d = await r.json();
+      if (r.ok) location.reload(); else alert(d.error);
+    }
+    async function toggleBan(username, status) {
+      const r = await fetch("/api/users/" + encodeURIComponent(username) + "/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      const d = await r.json();
+      if (r.ok) location.reload(); else alert(d.error);
+    }
+
+    /* ---- contact links (own profile) ---- */
+    function isOwner() { return window.CURRENT_USER && DATA && window.CURRENT_USER.username === DATA.user.username; }
+    function syncLinks() {
+      EDIT_LINKS = EDIT_LINKS.map((_, i) => {
+        const ps = document.getElementById("linkPlat-" + i), vs = document.getElementById("linkVal-" + i);
+        return ps && vs ? { platform: ps.value, value: vs.value.trim() } : EDIT_LINKS[i];
+      });
+    }
+    function addLinkRow() { syncLinks(); EDIT_LINKS.push({ platform: "email", value: "" }); render(); }
+    function removeLinkRow(i) { syncLinks(); EDIT_LINKS.splice(i, 1); render(); }
+    async function saveLinks() {
+      syncLinks();
+      const clean = EDIT_LINKS.filter((l) => l.value);
+      const r = await fetch("/api/me/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ links: clean }) });
+      const d = await r.json();
+      if (r.ok) { DATA.user.links = d.user.links; EDIT_LINKS = d.user.links.slice(); render(); alert(t("p.linksSaved")); }
+      else alert(d.error);
+    }
+    function linkEditRow(l, i) {
+      return `
+      <div class="flex items-center gap-2">
+        <select id="linkPlat-${i}" class="w-36 sm:w-44 shrink-0 text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white outline-none focus:border-indigo-300">
+          ${PLATFORMS.map((p) => `<option value="${p.id}" ${p.id === l.platform ? "selected" : ""}>${p.icon} ${p.label}</option>`).join("")}
+        </select>
+        <input id="linkVal-${i}" value="${escAttr(l.value)}" placeholder="${t("p.linkPlaceholder")}" class="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300" />
+        <button onclick="removeLinkRow(${i})" class="text-slate-300 hover:text-rose-500 px-2 text-lg shrink-0">✕</button>
+      </div>`;
+    }
+    function linksDisplay(links) {
+      if (!links || !links.length) return "";
+      return `<div class="flex flex-wrap gap-2 mt-3">${links.map((l) => {
+        const p = platformById(l.platform);
+        return `<a href="${escAttr(p.href(l.value))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"><span>${p.icon}</span>${p.label}</a>`;
+      }).join("")}</div>`;
+    }
+
+    function contribCard(s) {
+      const typeBadge = s.type === "collection"
+        ? `<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold bg-violet-100 text-violet-700">Collection</span>`
+        : `<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-700">Skill</span>`;
+      const pend = s.status === "pending" ? `<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-700">${t("card.pending")}</span>` : "";
+      return `
+      <a href="detail.html?id=${s.id}" class="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-sm transition-all">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">${typeBadge}${pend}<span class="text-xs text-slate-400">${catLabel(s.category)} · ${langLabel(s.lang)}</span></div>
+          <div class="font-semibold text-slate-800 text-sm truncate">${s.title}</div>
+        </div>
+        <div class="flex items-center gap-3 text-slate-500 shrink-0 text-sm">
+          <span class="flex items-center gap-1 text-amber-500 font-semibold">${ICONS.star}${fmtNum(s.stars)}</span>
+          <span class="flex items-center gap-1">${ICONS.download}${fmtNum(s.downloads)}</span>
+        </div>
+      </a>`;
+    }
+
+    function render() {
+      if (!DATA) return;
+      const u = DATA.user, st = DATA.stats;
+      const hasContrib = DATA.contributions.length > 0;
+
+      const ctrls = canEditRole(u) ? `
+        <div class="flex items-center gap-2 mt-4 flex-wrap">
+          <select id="roleSel" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white outline-none focus:border-indigo-300">
+            ${allowedRoles().map((r) => `<option value="${r}" ${r === u.role ? "selected" : ""}>${t("role." + r)}</option>`).join("")}
+          </select>
+          <button onclick="changeRole('${u.username}')" class="px-4 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors">${t("p.save")}</button>
+          <button onclick="toggleBan('${u.username}','${u.status === "banned" ? "active" : "banned"}')" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors ${u.status === "banned" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"}">${u.status === "banned" ? t("a.unban") : t("a.ban")}</button>
+        </div>` : "";
+
+      const statusBadge = `<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold ${u.status === "banned" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}">${t("status." + (u.status || "active"))}</span>`;
+      const providerLine = u.provider && u.provider !== "local" && u.provider !== "seed"
+        ? `<span class="text-xs text-slate-400">· ${t("p.provider")} ${u.provider}</span>` : "";
+
+      const editForm = isOwner() ? `
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-slate-800 text-sm">${t("p.contact")}</h2>
+            <button onclick="addLinkRow()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">＋ ${t("p.addLink")}</button>
+          </div>
+          <div class="space-y-2">${EDIT_LINKS.length ? EDIT_LINKS.map(linkEditRow).join("") : `<p class="text-sm text-slate-400">${t("p.noLinks")}</p>`}</div>
+          <div class="text-right mt-3"><button onclick="saveLinks()" class="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors">${t("p.save")}</button></div>
+        </div>` : "";
+
+      root.innerHTML = `
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+          <span class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-2xl font-black grid place-items-center shrink-0">${u.avatar}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-3 flex-wrap">
+              <h1 class="text-2xl font-extrabold tracking-tight">${u.displayName}</h1>
+              <span class="inline-flex px-2 py-0.5 rounded-md text-xs font-semibold ${ROLE_STYLE[u.role] || ROLE_STYLE.user}">${t("role." + u.role)}</span>
+              ${statusBadge}
+            </div>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+              <span class="text-sm text-slate-400">${u.handle}</span>
+              <span class="text-xs text-slate-400">· 👁 ${u.profileViews} ${t("p.views")}</span>
+              ${providerLine}
+            </div>
+            <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400 mt-2">
+              <span>${t("p.joined")}: <b class="text-slate-600 font-medium">${u.createdAt || "----"}</b></span>
+              <span>${t("p.lastLogin")}: <b class="text-slate-600 font-medium">${u.lastLogin || "----"}</b></span>
+              <span>${t("p.lastContribution")}: <b class="text-slate-600 font-medium">${u.lastContribution || "----"}</b></span>
+            </div>
+            ${isOwner() ? "" : linksDisplay(u.links)}
+            ${ctrls}
+          </div>
+        </div>
+      </div>
+
+      ${editForm}
+
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+        ${statCard(fmtNum(st.totalStars), t("p.totalStars"), "text-amber-500")}
+        ${statCard(fmtNum(st.totalDownloads), t("p.totalDl"), "text-slate-900")}
+        ${statCard(st.skillsCount, t("p.skills"), "text-slate-900")}
+        ${statCard(st.collectionsCount, t("p.collections"), "text-slate-900")}
+        ${statCard(u.profileViews, t("p.views"), "text-slate-900")}
+      </div>
+
+      <!-- charts: category pie (with %) + contributions over time -->
+      <div class="grid lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <h2 class="font-bold text-slate-800 text-sm mb-4">${t("p.catDist")}</h2>
+          ${hasContrib ? `
+          <div class="flex flex-col sm:flex-row items-center gap-5">
+            <div class="relative w-44 h-44 shrink-0"><canvas id="catPie"></canvas></div>
+            <div id="catLegend" class="flex-1 w-full space-y-2"></div>
+          </div>` : `<p class="text-sm text-slate-400">${t("p.noContrib")}</p>`}
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-6">
+          <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <h2 class="font-bold text-slate-800 text-sm">${t("p.timeline")}</h2>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <select id="timeMode" class="text-xs border border-slate-200 rounded-lg pl-2 pr-6 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer">
+                <option value="month">${t("p.byMonth")}</option>
+                <option value="year">${t("p.byYear")}</option>
+              </select>
+              <div id="monthRangeCtrl" class="flex items-center gap-1">
+                <select id="mFrom" class="text-xs border border-slate-200 rounded-lg pl-2 pr-5 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer"></select>
+                <span class="text-slate-300 text-xs">→</span>
+                <select id="mTo" class="text-xs border border-slate-200 rounded-lg pl-2 pr-5 py-1 bg-white outline-none focus:border-indigo-300 cursor-pointer"></select>
+              </div>
+            </div>
+          </div>
+          ${hasContrib ? `<div class="h-56"><canvas id="timeBar"></canvas></div>` : `<p class="text-sm text-slate-400">${t("p.noContrib")}</p>`}
+        </div>
+      </div>
+
+      <!-- contributions list -->
+      <div>
+        <h2 class="font-bold text-slate-800 text-sm mb-4">${t("p.contributions")} (${DATA.contributions.length})</h2>
+        <div class="grid sm:grid-cols-2 gap-3">
+          ${DATA.contributions.length ? DATA.contributions.map(contribCard).join("") : `<p class="text-sm text-slate-400">${t("p.noContrib")}</p>`}
+        </div>
+      </div>`;
+
+      mountCharts();
+    }
+    function statCard(num, label, color) {
+      return `<div class="bg-white border border-slate-200 rounded-2xl p-4 text-center"><div class="text-2xl font-extrabold ${color}">${num}</div><div class="text-xs text-slate-400 mt-0.5">${label}</div></div>`;
+    }
+
+    /* ---- charts (monthRange/monthLabel come from app.js) ---- */
+    function mountCharts() {
+      if (!DATA || typeof Chart === "undefined") return;
+      const cats = Object.entries(DATA.stats.categories);
+      const total = cats.reduce((a, [, n]) => a + n, 0);
+
+      if (pieChart) { pieChart.destroy(); pieChart = null; }
+      const pieCanvas = document.getElementById("catPie");
+      if (pieCanvas && total) {
+        pieChart = new Chart(pieCanvas, {
+          type: "doughnut",
+          data: { labels: cats.map(([id]) => catLabel(id)), datasets: [{ data: cats.map(([, n]) => n), backgroundColor: cats.map((_, i) => HEX[i % HEX.length]), borderWidth: 2, borderColor: "#fff" }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: "58%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} (${Math.round(c.parsed / total * 100)}%)` } } } },
+        });
+        const legend = document.getElementById("catLegend");
+        if (legend) legend.innerHTML = cats.map(([id, n], i) =>
+          `<div class="flex items-center gap-2 text-sm"><span class="w-3 h-3 rounded-sm shrink-0" style="background:${HEX[i % HEX.length]}"></span><span class="flex-1 text-slate-600 truncate">${catLabel(id)}</span><span class="text-slate-400 text-xs font-medium">${n} · ${Math.round(n / total * 100)}%</span></div>`).join("");
+      }
+
+      const modeSel = document.getElementById("timeMode"), mFrom = document.getElementById("mFrom"), mTo = document.getElementById("mTo");
+      const allM = DATA.contributions.map((c) => c.updated).filter(Boolean).map((d) => d.slice(0, 7)).sort();
+      const opts = allM.length ? monthRange(allM[0], allM[allM.length - 1]) : [];
+      const optHTML = (sel) => opts.map((m) => `<option value="${m}" ${m === sel ? "selected" : ""}>${monthLabel(m)}</option>`).join("");
+      if (modeSel) { modeSel.value = CHART.timeMode; modeSel.onchange = () => { CHART.timeMode = modeSel.value; toggleMonthCtrl(); buildTimeChart(); }; }
+      if (mFrom) { mFrom.innerHTML = optHTML(CHART.from); mFrom.onchange = () => { CHART.from = mFrom.value; buildTimeChart(); }; }
+      if (mTo) { mTo.innerHTML = optHTML(CHART.to); mTo.onchange = () => { CHART.to = mTo.value; buildTimeChart(); }; }
+      toggleMonthCtrl();
+      buildTimeChart();
+    }
+
+    function toggleMonthCtrl() {
+      const c = document.getElementById("monthRangeCtrl");
+      if (c) c.style.display = CHART.timeMode === "month" ? "flex" : "none";
+    }
+
+    function buildTimeChart() {
+      if (typeof Chart === "undefined") return;
+      const canvas = document.getElementById("timeBar");
+      if (timeChart) { timeChart.destroy(); timeChart = null; }
+      if (!canvas) return;
+      const dates = DATA.contributions.map((c) => c.updated).filter(Boolean);
+      let labels = [], counts = [];
+      if (CHART.timeMode === "year") {
+        const ys = dates.map((d) => d.slice(0, 4));
+        if (ys.length) {
+          const min = Math.min(...ys.map(Number)), max = Math.max(...ys.map(Number));
+          for (let y = min; y <= max; y++) { labels.push(String(y)); counts.push(ys.filter((v) => v === String(y)).length); }
+        }
+      } else {
+        const months = dates.map((d) => d.slice(0, 7)).sort();
+        const from = CHART.from || months[0], to = CHART.to || months[months.length - 1];
+        if (from && to) {
+          const rng = monthRange(from, to);
+          labels = rng.map(monthLabel);
+          counts = rng.map((m) => months.filter((v) => v === m).length);
+        }
+      }
+      timeChart = new Chart(canvas, {
+        type: "bar",
+        data: { labels, datasets: [{ label: t("p.contributions"), data: counts, backgroundColor: "#6366f1", borderRadius: 6, maxBarThickness: 46 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }, x: { grid: { display: false } } } },
+      });
+    }
+
+    async function init() {
+      let target = new URLSearchParams(location.search).get("u");
+      if (!target) {
+        const me = await (await fetch("/api/me")).json();
+        if (me.user) { location.replace("profile.html?u=" + me.user.username); return; }
+        return notFound();
+      }
+      const r = await fetch("/api/users/" + encodeURIComponent(target));
+      if (!r.ok) return notFound();
+      DATA = await r.json();
+      EDIT_LINKS = (DATA.user.links || []).slice();
+      const months = DATA.contributions.map((c) => c.updated).filter(Boolean).map((d) => d.slice(0, 7)).sort();
+      CHART.from = months[0] || null;
+      CHART.to = months[months.length - 1] || null;
+      await loadCategories();
+      render();
+    }
+
+    init();
+    document.addEventListener("i18n:changed", render);
+    document.addEventListener("auth:changed", render); // re-render role control once we know the viewer
+  </script>
+</body>
+</html>
