@@ -113,7 +113,7 @@ Mỗi trình duyệt được đếm **1 lần/ngày** (qua cookie `sh_seen`).
 ```
 config.js              → cấu hình (URI, DB_NAME, PORT)
 local-server.js        → entry chạy local: connect DB → seed → HTTP server + dispatcher
-api/[...path].js       → entry trên Vercel (serverless function)
+api/index.js       → entry trên Vercel (serverless function)
 src/
  ├─ db.js              → kết nối MongoDB (singleton)
  ├─ models/            → MODEL: users.js, skills.js, categories.js, visits.js

@@ -3,7 +3,7 @@
 Dự án đã được điều chỉnh để chạy trên **Vercel** (serverless):
 
 - **Frontend tĩnh** → thư mục `public/` (Vercel phục vụ trực tiếp).
-- **Backend** → 1 serverless function `api/[...path].js` xử lý mọi `/api/*` (dùng chung router/controller/model với bản local).
+- **Backend** → 1 serverless function `api/index.js` xử lý mọi `/api/*` (dùng chung router/controller/model với bản local).
 - **Session** → cookie ký HMAC (stateless), không cần lưu RAM nên hợp serverless.
 - **MongoDB** → kết nối được cache qua các lần gọi function.
 
@@ -55,4 +55,4 @@ npm install
 npm start      # http://localhost:3000
 ```
 Local vẫn dùng `npm start` (= `node local-server.js`, server thường trú) — không ảnh hưởng tới bản Vercel.
-Trên Vercel chỉ dùng function `api/[...path].js` + static `public/` (file `local-server.js` Vercel bỏ qua).
+Trên Vercel chỉ dùng function `api/index.js` + static `public/` (file `local-server.js` Vercel bỏ qua).
