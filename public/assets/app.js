@@ -51,6 +51,8 @@ const I18N = {
     "d.writeComment": "Viết bình luận...",
     "d.postComment": "Gửi bình luận",
     "d.noComments": "Chưa có bình luận nào. Hãy là người đầu tiên!",
+    "d.loginToComment": "Đăng nhập để bình luận",
+    "d.commentEmpty": "Vui lòng nhập nội dung bình luận.",
     "d.stars": "Stars",
     "d.downloads": "Lượt tải",
     "d.rating": "Đánh giá",
@@ -254,6 +256,8 @@ const I18N = {
     "d.writeComment": "Write a comment...",
     "d.postComment": "Post comment",
     "d.noComments": "No comments yet. Be the first!",
+    "d.loginToComment": "Sign in to comment",
+    "d.commentEmpty": "Please enter a comment.",
     "d.stars": "Stars",
     "d.downloads": "Downloads",
     "d.rating": "Rating",
@@ -872,6 +876,8 @@ async function initDetail() {
     const isCol = s.type === "collection";
     const canModerate = myRank() >= 2;
     const isOwner = window.CURRENT_USER && window.CURRENT_USER.username === s.authorUsername;
+    const starred = !!(window.CURRENT_USER && (s.starredBy || []).includes(window.CURRENT_USER.username));
+    window._commentRating = 0;
     const editBtn = (isOwner || canModerate)
       ? `<button onclick="openEditSkill('${s.id}')" class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-colors">✏️ ${t("d.edit")}</button>`
       : "";
@@ -939,7 +945,7 @@ async function initDetail() {
       </div>
       <div class="flex items-center gap-2 shrink-0 flex-wrap">
         ${editBtn}${delBtn}
-        <button onclick="toggleStar(this)" class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50 font-semibold text-sm text-slate-700 transition-colors">
+        <button onclick="starSkill('${s.id}', this)" class="flex items-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-colors ${starred ? "bg-amber-50 border-amber-300 text-amber-600" : "border-slate-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50"}">
           ${ICONS.star}<span data-star-count>${fmtNum(s.stars)}</span>
         </button>
         <button onclick="dlSkill('${s.id}')" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm shadow-indigo-200 transition-colors">
@@ -970,18 +976,20 @@ async function initDetail() {
         <div class="bg-white border border-slate-200 rounded-2xl p-6">
           <h2 class="font-bold text-slate-800 mb-1">${t("d.comments")} (${s.comments.length})</h2>
           <p class="text-xs text-slate-400 mb-4">${t("d.shareExp")} ${isCol ? t("d.thisCol") : t("d.thisSkill")}.</p>
+          ${window.CURRENT_USER ? `
           <div class="flex gap-3 mb-2">
-            <span class="w-9 h-9 shrink-0 rounded-full bg-slate-200 grid place-items-center text-slate-500 text-xs font-bold">${t("d.you")}</span>
+            <span class="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs font-bold grid place-items-center">${window.CURRENT_USER.avatar}</span>
             <div class="flex-1">
               <div class="flex items-center gap-1 mb-2 text-xl text-slate-300" id="ratingStars">
                 ${[1,2,3,4,5].map(n=>`<button onclick="setRating(${n})" data-r="${n}" class="hover:text-amber-400 transition-colors">★</button>`).join("")}
               </div>
-              <textarea rows="3" placeholder="${t("d.writeComment")}" class="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"></textarea>
+              <textarea id="commentText" rows="3" placeholder="${t("d.writeComment")}" class="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"></textarea>
               <div class="text-right mt-2">
-                <button onclick="alert(t('d.demoSend'))" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors">${t("d.postComment")}</button>
+                <button onclick="postComment('${s.id}')" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors">${t("d.postComment")}</button>
               </div>
             </div>
-          </div>
+          </div>` : `
+          <a href="login.html?next=${encodeURIComponent("detail.html?id=" + s.id)}" class="block text-center text-sm text-indigo-600 hover:underline py-3 border border-dashed border-slate-200 rounded-xl mb-2">${t("d.loginToComment")}</a>`}
           <div class="mt-4">${commentsHTML}</div>
         </div>
       </div>
@@ -1024,14 +1032,36 @@ function infoRow(k, v) {
   return `<div class="flex justify-between gap-3"><span class="text-slate-400">${k}</span><span class="text-slate-700 font-medium text-right">${v}</span></div>`;
 }
 
-/* ---- Small interactions (global) ------------------------------- */
-let _starred = false;
-function toggleStar(btn) {
-  _starred = !_starred;
-  btn.classList.toggle("bg-amber-50", _starred);
-  btn.classList.toggle("border-amber-300", _starred);
-  btn.classList.toggle("text-amber-600", _starred);
+/* ---- Star (persisted) ------------------------------------------ */
+async function starSkill(id, btn) {
+  if (!window.CURRENT_USER) { location.href = "login.html?next=" + encodeURIComponent("detail.html?id=" + id); return; }
+  const r = await fetch("/api/skills/" + encodeURIComponent(id) + "/star", { method: "POST" });
+  const d = await r.json();
+  if (!r.ok) { alert(d.error || "Error"); return; }
+  const span = btn.querySelector("[data-star-count]");
+  if (span) span.textContent = fmtNum(d.stars);
+  btn.classList.toggle("bg-amber-50", d.starred);
+  btn.classList.toggle("border-amber-300", d.starred);
+  btn.classList.toggle("text-amber-600", d.starred);
+  btn.classList.toggle("border-slate-200", !d.starred);
+  btn.classList.toggle("bg-white", !d.starred);
+  btn.classList.toggle("text-slate-700", !d.starred);
 }
+
+/* ---- Comments (persisted) -------------------------------------- */
+async function postComment(id) {
+  const ta = document.getElementById("commentText");
+  const text = (ta && ta.value.trim()) || "";
+  if (!text) { alert(t("d.commentEmpty")); return; }
+  const r = await fetch("/api/skills/" + encodeURIComponent(id) + "/comments", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, rating: window._commentRating || 0 }),
+  });
+  const d = await r.json();
+  if (r.ok) location.reload();
+  else alert(d.error || "Error");
+}
+
 /* ---- Downloads (ZIP) ---- */
 function dlSkill(id) { window.location.href = "/api/download/skill/" + encodeURIComponent(id); }
 function dlCategory(catId) { if (!catId || catId === "all") return dlAll(); window.location.href = "/api/download/category/" + encodeURIComponent(catId); }
@@ -1097,6 +1127,7 @@ async function saveEditSkill(id) {
   else alert(d.error || "Error");
 }
 function setRating(n) {
+  window._commentRating = n;
   document.querySelectorAll("#ratingStars button").forEach((b) => {
     b.classList.toggle("text-amber-400", b.dataset.r <= n);
     b.classList.toggle("text-slate-300", b.dataset.r > n);

@@ -246,6 +246,37 @@ async function skillDelete({ res, me, params }) {
   json(res, 200, { ok: true });
 }
 
+async function starSkill({ res, me, params }) {
+  if (!me) return json(res, 401, { error: "Cần đăng nhập để star." });
+  const s = await Skills.findSkill(params[0]);
+  if (!s) return json(res, 404, { error: "Không tìm thấy." });
+  const set = new Set(s.starredBy || []);
+  const starred = !set.has(me.username);
+  if (starred) set.add(me.username); else set.delete(me.username);
+  s.starredBy = [...set];
+  s.stars = s.starredBy.length;
+  await Skills.saveSkill(s);
+  json(res, 200, { stars: s.stars, starred });
+}
+
+async function addComment({ req, res, me, params }) {
+  if (!me) return json(res, 401, { error: "Cần đăng nhập để bình luận." });
+  if (me.status === "banned") return json(res, 403, { error: "Tài khoản đã bị cấm." });
+  const b = await readBody(req);
+  const text = String(b.text || "").trim().slice(0, 1000);
+  if (!text) return json(res, 400, { error: "Nội dung bình luận trống." });
+  const rating = Math.min(5, Math.max(0, parseInt(b.rating, 10) || 0));
+  const s = await Skills.findSkill(params[0]);
+  if (!s) return json(res, 404, { error: "Không tìm thấy." });
+  const comment = { user: me.displayName, username: me.username, avatar: me.avatar, time: today(), rating, text };
+  s.comments = s.comments || [];
+  s.comments.unshift(comment);
+  const rated = s.comments.filter((c) => c.rating > 0);
+  s.rating = rated.length ? Math.round(rated.reduce((a, c) => a + c.rating, 0) / rated.length * 10) / 10 : 0;
+  await Skills.saveSkill(s);
+  json(res, 200, { comment, rating: s.rating, count: s.comments.length });
+}
+
 /* ---------- analytics ---------- */
 async function visit({ req, res }) {
   const td = today();
@@ -343,6 +374,7 @@ module.exports = {
   usersList, profileGet, roleChange, statusChange,
   categoriesList, categoryCreate, categoryUpdate, categoryDelete,
   skillsList, skillCreate, skillGet, skillUpdate, skillDelete,
+  starSkill, addComment,
   visit, visitsGet, report,
   downloadSkill, downloadCategory, downloadAll,
 };

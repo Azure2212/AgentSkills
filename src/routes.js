@@ -32,6 +32,8 @@ module.exports = [
 
   { method: "GET", pattern: /^\/api\/skills$/, handler: c.skillsList },
   { method: "POST", pattern: /^\/api\/skills$/, handler: c.skillCreate },
+  { method: "POST", pattern: /^\/api\/skills\/([^/]+)\/star$/, handler: c.starSkill },
+  { method: "POST", pattern: /^\/api\/skills\/([^/]+)\/comments$/, handler: c.addComment },
   { method: "GET", pattern: /^\/api\/skills\/([^/]+)$/, handler: c.skillGet },
   { method: "PATCH", pattern: /^\/api\/skills\/([^/]+)$/, handler: c.skillUpdate },
   { method: "PUT", pattern: /^\/api\/skills\/([^/]+)$/, handler: c.skillUpdate },
