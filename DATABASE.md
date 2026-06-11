@@ -29,7 +29,7 @@ Kết nối được khởi tạo 1 lần (singleton) ở [`src/db.js`](src/db.j
 
 ```bash
 npm install      # cài driver mongodb (chỉ lần đầu)
-npm start        # = node server.js  → http://localhost:3000
+npm start        # = node local-server.js  → http://localhost:3000
 ```
 
 Khi khởi động, server sẽ:
@@ -112,7 +112,8 @@ Mỗi trình duyệt được đếm **1 lần/ngày** (qua cookie `sh_seen`).
 
 ```
 config.js              → cấu hình (URI, DB_NAME, PORT)
-server.js              → entry: connect DB → seed → HTTP server + dispatcher
+local-server.js        → entry chạy local: connect DB → seed → HTTP server + dispatcher
+api/[...path].js       → entry trên Vercel (serverless function)
 src/
  ├─ db.js              → kết nối MongoDB (singleton)
  ├─ models/            → MODEL: users.js, skills.js, categories.js, visits.js

@@ -3,7 +3,7 @@
    { req, res, me, params, query }
    ============================================================ */
 const JSZip = require("jszip");
-const { json, readBody, parseCookies, newSession, delSession, sessions, hashPw, today } = require("./lib/http");
+const { json, readBody, parseCookies, signSession, verifySession, hashPw, today } = require("./lib/http");
 const { RANK, PLATFORM_IDS, makeUser, publicUser, canManageTarget, slugify } = require("./lib/helpers");
 const Users = require("./models/users");
 const Skills = require("./models/skills");
@@ -14,9 +14,7 @@ const SESSION_COOKIE = (token) => `sh_session=${token}; HttpOnly; Path=/; SameSi
 const visitsTotal = (v) => Object.values(v.daily).reduce((a, b) => a + b, 0);
 
 async function currentUser(req) {
-  const token = parseCookies(req)["sh_session"];
-  if (!token) return null;
-  const username = sessions.get(token);
+  const username = verifySession(parseCookies(req)["sh_session"]);
   return username ? await Users.findUser(username) : null;
 }
 
@@ -53,7 +51,7 @@ async function register({ req, res }) {
   const user = makeUser({ username, displayName: b.displayName || username, password: b.password, role: "user" });
   user.lastLogin = today();
   await Users.saveUser(user);
-  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(newSession(user.username)) });
+  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(signSession(user.username)) });
 }
 
 async function login({ req, res }) {
@@ -64,7 +62,7 @@ async function login({ req, res }) {
   if (user.status === "banned") return json(res, 403, { error: "Tài khoản đã bị cấm." });
   user.lastLogin = today();
   await Users.saveUser(user);
-  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(newSession(user.username)) });
+  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(signSession(user.username)) });
 }
 
 async function oauth({ req, res }) {
@@ -78,12 +76,10 @@ async function oauth({ req, res }) {
   if (user.status === "banned") return json(res, 403, { error: "Tài khoản đã bị cấm." });
   user.lastLogin = today();
   await Users.saveUser(user);
-  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(newSession(user.username)) });
+  json(res, 200, { user: publicUser(user) }, { "Set-Cookie": SESSION_COOKIE(signSession(user.username)) });
 }
 
-function logout({ req, res }) {
-  const token = parseCookies(req)["sh_session"];
-  if (token) delSession(token);
+function logout({ res }) {
   json(res, 200, { ok: true }, { "Set-Cookie": "sh_session=; HttpOnly; Path=/; Max-Age=0" });
 }
 

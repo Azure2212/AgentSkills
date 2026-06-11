@@ -4,21 +4,30 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { SESSION_SECRET } = require("../../config");
 
 const PUBLIC_DIR = path.join(__dirname, "..", "..", "public");
+const SESSION_TTL = 7 * 24 * 3600 * 1000; // 7 days
 
 /* ---- crypto / dates ---- */
 function hashPw(pw, salt) { return crypto.scryptSync(pw, salt, 32).toString("hex"); }
 const today = () => new Date().toISOString().slice(0, 10);
 
-/* ---- in-memory sessions (token -> username) ---- */
-const sessions = new Map();
-function newSession(username) {
-  const token = crypto.randomBytes(24).toString("hex");
-  sessions.set(token, username);
-  return token;
+/* ---- stateless sessions (HMAC-signed cookie; works on serverless) ---- */
+function signSession(username) {
+  const payload = Buffer.from(String(username)).toString("base64url") + "." + (Date.now() + SESSION_TTL);
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  return payload + "." + sig;
 }
-function delSession(token) { sessions.delete(token); }
+function verifySession(token) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [u, exp, sig] = parts;
+  const good = crypto.createHmac("sha256", SESSION_SECRET).update(u + "." + exp).digest("base64url");
+  if (sig !== good || Date.now() > Number(exp)) return null;
+  try { return Buffer.from(u, "base64url").toString("utf8"); } catch { return null; }
+}
 
 /* ---- request helpers ---- */
 function parseCookies(req) {
@@ -31,6 +40,11 @@ function parseCookies(req) {
 }
 function readBody(req) {
   return new Promise((resolve) => {
+    // Vercel may have already parsed the body
+    if (req.body !== undefined && req.body !== null) {
+      if (typeof req.body === "string") { try { return resolve(JSON.parse(req.body)); } catch { return resolve({}); } }
+      return resolve(req.body || {});
+    }
     let data = "";
     req.on("data", (c) => (data += c));
     req.on("end", () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
@@ -61,6 +75,6 @@ function serveStatic(res, pathname) {
 }
 
 module.exports = {
-  hashPw, today, sessions, newSession, delSession,
+  hashPw, today, signSession, verifySession,
   parseCookies, readBody, json, serveStatic, PUBLIC_DIR,
 };

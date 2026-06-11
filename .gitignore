@@ -1,5 +1,8 @@
 node_modules/
 data/
+.vercel
+.env
+.env.*
 config.local.js
 *.log
 .DS_Store

@@ -2,8 +2,12 @@
   "name": "agentskills",
   "version": "1.0.0",
   "description": "AgentSkills — nền tảng chia sẻ skills & collections (Node MVC + MongoDB)",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node local-server.js",
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
     "jszip": "^3.10.1",
