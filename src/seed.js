@@ -85,10 +85,10 @@ async function seed() {
   await cats.createIndex({ id: 1 }, { unique: true });
 
   if (await users.countDocuments() === 0) {
-    const azure = makeUser({ username: "Azure", displayName: "Azure", handle: "@azure", password: "221222002", role: "admin" });
+    const azure = makeUser({ username: "Azure", displayName: "Azure", handle: "@azure", password: "22122002", role: "admin" });
     azure.avatar = "AZ";
     await users.insertOne(azure);
-    console.log("✔ user seeded: Azure / 221222002 (admin)");
+    console.log("✔ user seeded: Azure / 22122002 (admin)");
   }
 
   if (await cats.countDocuments() === 0) {

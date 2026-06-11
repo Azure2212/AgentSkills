@@ -45,7 +45,7 @@ const server = http.createServer(async (req, res) => {
   await connect();
   await seed();
   server.listen(PORT, () => {
-    console.log(`\n  AgentSkills → http://localhost:${PORT}\n  Admin: Azure / 221222002\n`);
+    console.log(`\n  AgentSkills → http://localhost:${PORT}\n  Admin: Azure / 22122002\n`);
   });
 })().catch((e) => {
   console.error("❌ Khởi động thất bại:", e.message);

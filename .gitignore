@@ -1,5 +1,6 @@
 node_modules/
 data/
+mongodbInformation.md
 .vercel
 .env
 .env.*

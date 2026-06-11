@@ -40,7 +40,7 @@ git push -u origin main
 ## Bước 5 — Deploy
 Bấm **Deploy**. Xong sẽ có domain `https://<project>.vercel.app`.
 
-Dữ liệu đã nằm sẵn trên Atlas nên không cần seed lại. Tài khoản admin: **Azure / 221222002**.
+Dữ liệu đã nằm sẵn trên Atlas nên không cần seed lại. Tài khoản admin: **Azure**.
 
 ---
 

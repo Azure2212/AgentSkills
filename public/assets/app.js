@@ -67,8 +67,6 @@ const I18N = {
     "d.tags": "Tags",
     "d.typeCol": "Collection (nhiều file)",
     "d.typeSkill": "Skill (file đơn)",
-    "d.demoSend": "Demo UI — chức năng gửi sẽ kết nối backend sau.",
-    "d.demoDownload": "Demo UI — sẽ tải file thật khi kết nối backend / storage.",
     // upload
     "u.title": "Đóng góp lên AgentSkills",
     "u.subtitle": "Chia sẻ một hướng dẫn đơn lẻ hoặc cả một bộ collection cho cộng đồng.",
@@ -95,7 +93,6 @@ const I18N = {
     "u.fTagsPh": "prompt, llm, beginner",
     "u.cancel": "← Huỷ",
     "u.submit": "Đăng lên AgentSkills",
-    "u.demo": "Demo UI — sẽ gửi lên server khi kết nối backend.",
     "u.needLogin": "Bạn cần đăng nhập để đóng góp.",
     "u.success": "Đã đăng thành công!",
     // auth nav
@@ -127,8 +124,6 @@ const I18N = {
     "login.submit": "Đăng nhập",
     "login.noAcc": "Chưa có tài khoản?",
     "login.toRegister": "Đăng ký ngay",
-    "login.or": "hoặc tiếp tục với",
-    "login.oauthPrompt": "Nhập email/handle để mô phỏng đăng nhập",
     "reg.title": "Tạo tài khoản",
     "reg.sub": "Tham gia cộng đồng AgentSkills.",
     "reg.displayName": "Tên hiển thị",
@@ -272,8 +267,6 @@ const I18N = {
     "d.tags": "Tags",
     "d.typeCol": "Collection (multiple files)",
     "d.typeSkill": "Skill (single file)",
-    "d.demoSend": "Demo UI — posting will connect to a backend later.",
-    "d.demoDownload": "Demo UI — real download once backend / storage is connected.",
     // upload
     "u.title": "Contribute to AgentSkills",
     "u.subtitle": "Share a single guide or a whole collection with the community.",
@@ -300,7 +293,6 @@ const I18N = {
     "u.fTagsPh": "prompt, llm, beginner",
     "u.cancel": "← Cancel",
     "u.submit": "Publish to AgentSkills",
-    "u.demo": "Demo UI — will submit to the server once a backend is connected.",
     "u.needLogin": "You need to sign in to contribute.",
     "u.success": "Published successfully!",
     // auth nav
@@ -332,8 +324,6 @@ const I18N = {
     "login.submit": "Sign in",
     "login.noAcc": "No account yet?",
     "login.toRegister": "Sign up now",
-    "login.or": "or continue with",
-    "login.oauthPrompt": "Enter an email/handle to simulate sign-in",
     "reg.title": "Create account",
     "reg.sub": "Join the AgentSkills community.",
     "reg.displayName": "Display name",
@@ -442,17 +432,8 @@ const PLATFORMS = [
 ];
 function platformById(id) { return PLATFORMS.find((p) => p.id === id) || { id, label: id, icon: "🔗", href: (v) => v }; }
 
-/* ---- Categories (loaded from API; array below is a fallback) ---- */
-let CATEGORIES = [
-  { id: "all", vi: "Tất cả", en: "All" },
-  { id: "ai", vi: "AI & Prompting", en: "AI & Prompting" },
-  { id: "coding", vi: "Lập trình", en: "Coding" },
-  { id: "devops", vi: "DevOps", en: "DevOps" },
-  { id: "data", vi: "Data & ML", en: "Data & ML" },
-  { id: "design", vi: "Design", en: "Design" },
-  { id: "writing", vi: "Viết & Docs", en: "Writing & Docs" },
-  { id: "business", vi: "Business", en: "Business" },
-];
+/* ---- Categories (always loaded live from /api/categories) ------- */
+let CATEGORIES = [{ id: "all", vi: "Tất cả", en: "All" }];
 function catLabel(id) { const c = CATEGORIES.find((x) => x.id === id); return c ? c[LANG] : id; }
 
 const ALL_CAT = { id: "all", vi: "Tất cả", en: "All" };
@@ -467,7 +448,7 @@ async function loadCategories() {
   return CATEGORIES;
 }
 
-/* ---- Skill data (loaded from API; array below is a file:// fallback) -- */
+/* ---- Skill data (always loaded live from /api/skills) ---------- */
 const RANK_FE = { user: 1, "sub-admin": 2, admin: 3 };
 function myRank() { return window.CURRENT_USER ? (RANK_FE[window.CURRENT_USER.role] || 0) : 0; }
 
@@ -482,154 +463,7 @@ async function loadSkills() {
   return SKILLS;
 }
 
-let SKILLS = [
-  {
-    id: "claude-code-master", type: "collection", lang: "vi",
-    title: "Claude Code Power Pack",
-    author: { name: "Nguyễn An", handle: "@anhdev", avatar: "AN" },
-    description: "Bộ hướng dẫn đầy đủ để dùng Claude Code hiệu quả: hooks, slash commands, MCP servers, subagents và cấu hình settings.json mẫu.",
-    category: "ai", tags: ["claude", "agent", "cli", "automation"],
-    stars: 1284, downloads: 8920, rating: 4.9, updated: "2026-06-02", license: "MIT", format: "MD",
-    files: [
-      { name: "README.md", type: "MD", size: "12 KB" },
-      { name: "hooks-guide.md", type: "MD", size: "8 KB" },
-      { name: "slash-commands.md", type: "MD", size: "6 KB" },
-      { name: "settings.example.json", type: "JSON", size: "2 KB" },
-      { name: "mcp-servers.xml", type: "XML", size: "4 KB" },
-    ],
-    readme: `# Claude Code Power Pack
-
-Bộ công cụ giúp bạn khai thác tối đa **Claude Code** trong công việc hàng ngày.
-
-## Bao gồm
-- ⚙️ Cấu hình \`settings.json\` tối ưu sẵn
-- 🪝 Hệ thống **hooks** tự động format & lint
-- ⚡ Bộ **slash commands** cho review, test, deploy
-- 🔌 Hướng dẫn cài **MCP servers** phổ biến
-
-## Cài đặt nhanh
-\`\`\`bash
-git clone https://example.com/power-pack
-cp settings.example.json ~/.claude/settings.json
-\`\`\`
-
-> 💡 Mẹo: Dùng \`/review\` trước mỗi lần commit để bắt lỗi sớm.`,
-    comments: [
-      { user: "Trần Bảo", avatar: "TB", time: "3 ngày trước", rating: 5, text: "Cực kỳ hữu ích! Bộ hooks giúp mình tiết kiệm cả tiếng mỗi ngày." },
-      { user: "Lê Minh", avatar: "LM", time: "1 tuần trước", rating: 4, text: "Phần MCP hơi khó với người mới nhưng nhìn chung rất chất lượng." },
-    ],
-  },
-  {
-    id: "prompt-engineering-101", type: "skill", lang: "en",
-    title: "Prompt Engineering 101",
-    author: { name: "Phạm Hà", handle: "@haph", avatar: "PH" },
-    description: "A foundational guide to prompting techniques: zero-shot, few-shot, chain-of-thought, and how to avoid hallucinations.",
-    category: "ai", tags: ["prompt", "llm", "beginner"],
-    stars: 932, downloads: 5410, rating: 4.8, updated: "2026-05-28", license: "CC-BY-4.0", format: "MD",
-    files: [{ name: "prompt-engineering-101.md", type: "MD", size: "18 KB" }],
-    readme: `# Prompt Engineering 101
-
-Learn how to "talk" to language models to get the best results.
-
-## Contents
-1. Anatomy of a good prompt
-2. Few-shot vs Zero-shot
-3. Chain-of-Thought reasoning
-4. Controlling output format`,
-    comments: [
-      { user: "Vũ Khánh", avatar: "VK", time: "2 days ago", rating: 5, text: "Clear explanations with real examples. 10/10!" },
-    ],
-  },
-  {
-    id: "react-best-practices", type: "skill", lang: "en",
-    title: "React Best Practices 2026",
-    author: { name: "Đỗ Quang", handle: "@quangdo", avatar: "ĐQ" },
-    description: "A modern checklist & patterns for React: hooks, performance, state management and a standard folder structure.",
-    category: "coding", tags: ["react", "frontend", "javascript"],
-    stars: 778, downloads: 4120, rating: 4.7, updated: "2026-06-05", license: "MIT", format: "MD",
-    files: [{ name: "react-best-practices.md", type: "MD", size: "22 KB" }],
-    readme: `# React Best Practices 2026
-
-Patterns you should (and shouldn't) use when writing React in 2026.`,
-    comments: [],
-  },
-  {
-    id: "docker-cheatsheet", type: "skill", lang: "vi",
-    title: "Docker Cheatsheet Toàn Tập",
-    author: { name: "Hoàng Sơn", handle: "@sonhoang", avatar: "HS" },
-    description: "Tổng hợp lệnh Docker thường dùng kèm ví dụ Dockerfile và docker-compose mẫu cho dự án thực tế.",
-    category: "devops", tags: ["docker", "container", "devops"],
-    stars: 654, downloads: 6730, rating: 4.6, updated: "2026-05-20", license: "Apache-2.0", format: "PDF",
-    files: [{ name: "docker-cheatsheet.pdf", type: "PDF", size: "1.4 MB" }],
-    readme: `# Docker Cheatsheet
-
-File PDF tổng hợp toàn bộ lệnh Docker quan trọng nhất.`,
-    comments: [
-      { user: "Ngô Linh", avatar: "NL", time: "5 ngày trước", rating: 5, text: "In ra dán cạnh bàn làm việc luôn, tiện vô cùng." },
-    ],
-  },
-  {
-    id: "ml-pipeline-kit", type: "collection", lang: "en",
-    title: "ML Pipeline Starter Kit",
-    author: { name: "Bùi Trang", handle: "@trangbui", avatar: "BT" },
-    description: "A full set of templates for an end-to-end ML pipeline: data preprocessing, training, evaluation and MLflow config.",
-    category: "data", tags: ["ml", "python", "mlflow", "pipeline"],
-    stars: 541, downloads: 2980, rating: 4.8, updated: "2026-06-08", license: "BSD-3", format: "MD",
-    files: [
-      { name: "README.md", type: "MD", size: "9 KB" },
-      { name: "preprocess.md", type: "MD", size: "7 KB" },
-      { name: "train.md", type: "MD", size: "11 KB" },
-      { name: "mlflow.config.xml", type: "XML", size: "3 KB" },
-    ],
-    readme: `# ML Pipeline Starter Kit
-
-Spin up a clean Machine Learning pipeline in minutes.`,
-    comments: [],
-  },
-  {
-    id: "ui-design-tokens", type: "skill", lang: "vi",
-    title: "Design Tokens System",
-    author: { name: "Mai Chi", handle: "@chimai", avatar: "MC" },
-    description: "Hướng dẫn xây dựng hệ thống design token nhất quán cho màu sắc, typography, spacing dùng chung Figma ↔ code.",
-    category: "design", tags: ["design-system", "figma", "tokens"],
-    stars: 489, downloads: 2210, rating: 4.5, updated: "2026-05-15", license: "CC-BY-4.0", format: "MD",
-    files: [{ name: "design-tokens.md", type: "MD", size: "15 KB" }],
-    readme: `# Design Tokens System
-
-Đồng bộ thiết kế giữa designer và developer bằng design tokens.`,
-    comments: [],
-  },
-  {
-    id: "technical-writing", type: "skill", lang: "en",
-    title: "Technical Writing Guide",
-    author: { name: "Lý Thu", handle: "@thuly", avatar: "LT" },
-    description: "How to write clear, readable technical docs: structure, tone, code examples and docs versioning.",
-    category: "writing", tags: ["docs", "writing", "documentation"],
-    stars: 376, downloads: 1840, rating: 4.7, updated: "2026-06-01", license: "MIT", format: "DOCX",
-    files: [{ name: "technical-writing.docx", type: "DOCX", size: "320 KB" }],
-    readme: `# Technical Writing Guide
-
-Write docs people actually want to read.`,
-    comments: [],
-  },
-  {
-    id: "saas-launch-checklist", type: "collection", lang: "vi",
-    title: "SaaS Launch Checklist",
-    author: { name: "Trịnh Đức", handle: "@ductrinh", avatar: "TĐ" },
-    description: "Bộ checklist & template đầy đủ để ra mắt một sản phẩm SaaS: pricing, onboarding, analytics, legal.",
-    category: "business", tags: ["saas", "startup", "launch"],
-    stars: 312, downloads: 1520, rating: 4.6, updated: "2026-05-30", license: "MIT", format: "PDF",
-    files: [
-      { name: "checklist.pdf", type: "PDF", size: "800 KB" },
-      { name: "pricing-template.md", type: "MD", size: "5 KB" },
-      { name: "onboarding-flow.md", type: "MD", size: "6 KB" },
-    ],
-    readme: `# SaaS Launch Checklist
-
-Đừng quên bất cứ điều gì khi ra mắt sản phẩm SaaS của bạn.`,
-    comments: [],
-  },
-];
+let SKILLS = [];
 
 /* ---- Icons (Lucide-style inline SVG) --------------------------- */
 const ICONS = {
@@ -866,7 +700,7 @@ async function initDetail() {
   await Promise.all([loadSkills(), loadCategories()]);
 
   const id = new URLSearchParams(location.search).get("id");
-  const s = SKILLS.find((x) => x.id === id) || SKILLS[0];
+  const s = SKILLS.find((x) => x.id === id);
   if (!s) {
     root.innerHTML = `<div class="text-center py-20 text-slate-400"><p class="text-lg">${t("d.notFound")}</p><a href="index.html" class="text-indigo-600 text-sm mt-2 inline-block">← ${t("d.home")}</a></div>`;
     return;

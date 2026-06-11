@@ -37,7 +37,7 @@ Khi khởi động, server sẽ:
 2. **Seed/di trú** dữ liệu lần đầu (`src/seed.js`): nếu một collection rỗng, nó nhập dữ liệu từ thư mục `data/` cũ (file `.txt`/`.json`) nếu có; nếu không thì dùng dữ liệu mẫu mặc định.
 3. Lắng nghe HTTP, phục vụ frontend trong `public/` + API `/api/*`.
 
-Tài khoản admin mặc định: **Azure / 221222002**.
+Tài khoản admin mặc định: **Azure** (mật khẩu đặt trong `src/seed.js` khi seed lần đầu).
 
 > Dữ liệu skill/collection **không phải dữ liệu mẫu** — được import từ các guide thật trong
 > `config.GUIDES_DIR` (mặc định `Vite_Code_Guides`) ở lần chạy đầu, phân loại theo danh mục.
@@ -71,7 +71,7 @@ Database: **`agentskills`** — gồm 4 collection.
 ### 3.2. `skills`  (index duy nhất: `id`) — chứa cả skill lẫn collection
 ```jsonc
 {
-  "id": "claude-code-master",     // slug định danh (unique)
+  "id": "project-structure-templates", // slug định danh (unique)
   "type": "skill",               // "skill" (file đơn) | "collection" (nhiều file)
   "lang": "vi",                  // "vi" | "en"
   "title": "…",
